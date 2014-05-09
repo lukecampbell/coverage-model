@@ -57,18 +57,21 @@ def _make_cov(root_dir, params, nt=10, data_dict=None, make_temporal=True):
     if not data_dict:
         return scov
 
-    if 'time' in data_dict:
-        time_array = data_dict['time']
-    else:
-        time_array = np.arange(nt)
 
-    for k,v in data_dict.iteritems():
-        data_dict[k] = NumpyParameterData(k, v, time_array)
-
+    data_dict = _easy_dict(data_dict)
     scov.set_parameter_values(data_dict)
     return scov
 
+def _easy_dict(data_dict):
+    if 'time' in data_dict:
+        time_array = data_dict['time']
+    else:
+        elements = data_dict.values()[0]
+        time_array = np.arange(len(elements))
 
+    for k,v in data_dict.iteritems():
+        data_dict[k] = NumpyParameterData(k, v, time_array)
+    return data_dict
 
 @attr('INT',group='cov')
 class TestPostgresStorageInt(CoverageModelUnitTestCase):
@@ -331,4 +334,17 @@ class TestPostgresStorageInt(CoverageModelUnitTestCase):
          np.testing.assert_array_equal(data_dict['time'], np.arange(10000, 10010))
          np.testing.assert_array_equal(data_dict['quantity'],
                  np.array([30., 40., 50., -9999., -9999., -9999., -9999., -9999., -9999., -9999.]))
+
+    def test_array_types(self):
+        param_type = ArrayType(inner_encoding='<f4')
+        param_ctx = ParameterContext("array_type", param_type=param_type)
+
+        scov = _make_cov(self.working_dir, ['quantity', param_ctx], nt=0)
+
+        data_dict = {
+            'time' : np.array([0, 1], dtype='<f8'),
+            'array_type' : np.array([[0, 0, 0], [1, 1, 1]])
+        }
+        data_dict = _easy_dict(data_dict)
+        scov.set_parameter_values(data_dict)
 
